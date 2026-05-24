@@ -4,29 +4,36 @@ mod router;
 use request::parse_request;
 use response::Response;
 use router::route;
-use std::{
-    io::{BufRead, BufReader, Write},
-    net::{TcpListener, TcpStream},
-};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::{TcpListener, TcpStream};
 
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+#[tokio::main]
+async fn main() {
+    let listener = TcpListener::bind("127.0.0.1:7878").await.unwrap();
+
     println!("Server listening on port 7878");
 
-    for stream in listener.incoming() {
-        let stream = stream.unwrap();
+    loop {
+        let (stream, _) = listener.accept().await.unwrap();
 
-        handle_connection(&stream);
+        tokio::spawn(async move {
+            handle_connection(stream).await;
+        });
     }
 }
 
-fn handle_connection(mut stream: &TcpStream) {
-    let buf_reader = BufReader::new(stream);
-    let http_request: Vec<String> = buf_reader
-        .lines()
-        .map(|line| line.unwrap())
-        .take_while(|line| !line.is_empty())
-        .collect();
+async fn handle_connection(mut stream: TcpStream) {
+    let buf_reader = BufReader::new(&mut stream);
+    let mut lines = buf_reader.lines();
+
+    let mut http_request: Vec<String> = Vec::new();
+
+    while let Some(line) = lines.next_line().await.unwrap() {
+        if line.is_empty() {
+            break;
+        }
+        http_request.push(line);
+    }
 
     println!("Received request: \n{:#?}", http_request);
 
@@ -37,5 +44,5 @@ fn handle_connection(mut stream: &TcpStream) {
         None => Response::not_found().to_string(),
     };
 
-    stream.write_all(response.as_bytes()).unwrap();
+    let _ = stream.write_all(response.as_bytes()).await;
 }
