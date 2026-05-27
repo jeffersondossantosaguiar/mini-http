@@ -21,3 +21,36 @@ pub fn parse_request(http_request: &Vec<String>) -> Option<Request> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    mod parse_request {
+        use super::super::*;
+
+        #[test]
+        fn test_parse_request() {
+            let http_request = vec![
+                "GET /index.html HTTP/1.1".to_string(),
+                "Host: example.com".to_string(),
+                "User-Agent: TestAgent".to_string(),
+            ];
+
+            let request = parse_request(&http_request).unwrap();
+            assert_eq!(request.method, "GET");
+            assert_eq!(request.path, "/index.html");
+            assert_eq!(request.version, "HTTP/1.1");
+        }
+
+        #[test]
+        fn test_parse_request_invalid() {
+            let http_request = vec![
+                "INVALID REQUEST".to_string(),
+                "Host: example.com".to_string(),
+                "User-Agent: TestAgent".to_string(),
+            ];
+
+            let request = parse_request(&http_request);
+            assert!(request.is_none());
+        }
+    }
+}

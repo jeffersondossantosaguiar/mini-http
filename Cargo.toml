@@ -5,3 +5,10 @@ edition = "2024"
 
 [dependencies]
 tokio = { version = "1.52.3", features = ["full"] }
+
+[dev-dependencies]
+criterion = { version = "0.8.2", features = ["html_reports"] }
+
+[[bench]]
+name = "benchmark"
+harness = false
